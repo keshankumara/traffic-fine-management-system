@@ -87,4 +87,20 @@ public class AdminController {
             ApiResponse.success("All payment records", paymentService.getAllPayments())
         );
     }
+
+    @GetMapping("/users")
+    @Operation(summary = "List all users (admin)")
+    public ResponseEntity<ApiResponse<java.util.List<com.srilanka.trafficfine.dto.response.UserResponse>>> allUsers() {
+        java.util.List<com.srilanka.trafficfine.entity.User> users = analyticsService.getAllUsers();
+        java.util.List<com.srilanka.trafficfine.dto.response.UserResponse> resp = users.stream().map(com.srilanka.trafficfine.dto.response.UserResponse::from).toList();
+        return ResponseEntity.ok(ApiResponse.success("All users", resp));
+    }
+
+    @GetMapping("/notifications")
+    @Operation(summary = "List notification logs")
+    public ResponseEntity<ApiResponse<java.util.List<com.srilanka.trafficfine.dto.response.NotificationLogResponse>>> notificationLogs() {
+        java.util.List<com.srilanka.trafficfine.entity.NotificationLog> logs = analyticsService.getAllNotificationLogs();
+        java.util.List<com.srilanka.trafficfine.dto.response.NotificationLogResponse> resp = logs.stream().map(com.srilanka.trafficfine.dto.response.NotificationLogResponse::from).toList();
+        return ResponseEntity.ok(ApiResponse.success("Notification logs", resp));
+    }
 }
