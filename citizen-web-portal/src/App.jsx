@@ -179,8 +179,10 @@ function App() {
         {/* Dynamic Views */}
         {step === 'search' && (
           <>
-            <FineSearch onFineFound={handleFineFound} />
-            
+            {loggedInCitizen ? (
+              <FineSearch onFineFound={handleFineFound} />
+            ) : null}
+
             {/* Citizen Portal Invite Landing Card */}
             <div className="citizen-portal-invite animate-fade-in">
               <div className="invite-content">
@@ -208,30 +210,35 @@ function App() {
         )}
 
         {step === 'dashboard' && loggedInCitizen && (
-          <CitizenDashboard
-            citizen={loggedInCitizen}
-            fines={fines}
-            onPayFine={(fine, totalAmount) => {
-              setActiveFine(fine);
-              setPayAmount(totalAmount);
-              setPaymentSource('citizen');
-              setStep('payment');
-            }}
-            onViewDetails={(fine) => {
-              setActiveFine(fine);
-              setPaymentSource('citizen');
-              setStep('details');
-            }}
-            onViewReceipt={(fine) => {
-              setActiveFine(fine);
-              setPaymentSource('citizen');
-              handleViewPaidReceipt();
-            }}
-            onLogout={() => {
-              setLoggedInCitizen(null);
-              setStep('search');
-            }}
-          />
+          <>
+            <div style={{ marginBottom: '24px' }}>
+              <FineSearch onFineFound={handleFineFound} />
+            </div>
+            <CitizenDashboard
+              citizen={loggedInCitizen}
+              fines={fines}
+              onPayFine={(fine, totalAmount) => {
+                setActiveFine(fine);
+                setPayAmount(totalAmount);
+                setPaymentSource('citizen');
+                setStep('payment');
+              }}
+              onViewDetails={(fine) => {
+                setActiveFine(fine);
+                setPaymentSource('citizen');
+                setStep('details');
+              }}
+              onViewReceipt={(fine) => {
+                setActiveFine(fine);
+                setPaymentSource('citizen');
+                handleViewPaidReceipt();
+              }}
+              onLogout={() => {
+                setLoggedInCitizen(null);
+                setStep('search');
+              }}
+            />
+          </>
         )}
 
         {step === 'details' && activeFine && (

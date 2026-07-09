@@ -3,10 +3,15 @@ import { useState } from 'react';
 export default function CitizenDashboard({ citizen, fines, onPayFine, onViewReceipt, onViewDetails, onLogout }) {
   const [activeTab, setActiveTab] = useState('unpaid'); // 'unpaid' | 'paid'
 
+  const displayName = citizen?.fullName || citizen?.email || 'Citizen';
+  const licenseNumber = citizen?.licenseNumber || 'N/A';
+  const vehicleNumber = citizen?.vehicleNumber || 'N/A';
+
   // Filter fines for this specific citizen
-  const citizenFines = fines.filter(
-    (f) => f.licenseNumber.trim().toUpperCase() === citizen.licenseNumber.trim().toUpperCase()
-  );
+  const citizenFines = (fines || []).filter((f) => {
+    const fineLicense = (f?.licenseNumber || '').toString().trim().toUpperCase();
+    return fineLicense === String(licenseNumber).trim().toUpperCase();
+  });
 
   const unpaidFines = citizenFines.filter((f) => f.status === 'pending');
   const paidFines = citizenFines.filter((f) => f.status === 'paid');
@@ -29,12 +34,12 @@ export default function CitizenDashboard({ citizen, fines, onPayFine, onViewRece
       <div className="dashboard-profile-card">
         <div className="profile-details">
           <div className="profile-avatar">
-            {citizen.fullName.split(' ').map(n => n[0]).join('')}
+            {displayName.split(' ').map(n => n[0]).join('') || 'C'}
           </div>
           <div className="profile-text">
-            <h3>{citizen.fullName}</h3>
-            <span className="profile-license">License No: <strong>{citizen.licenseNumber}</strong></span>
-            <span className="profile-vehicle">Primary Vehicle: <strong>{citizen.vehicleNumber || 'N/A'}</strong></span>
+            <h3>{displayName}</h3>
+            <span className="profile-license">License No: <strong>{licenseNumber}</strong></span>
+            <span className="profile-vehicle">Primary Vehicle: <strong>{vehicleNumber}</strong></span>
           </div>
         </div>
         <button type="button" className="btn-secondary logout-btn" onClick={onLogout}>
@@ -102,7 +107,7 @@ export default function CitizenDashboard({ citizen, fines, onPayFine, onViewRece
                   <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                 </svg>
                 <h4>No Outstanding Fines!</h4>
-                <p>All traffic tickets for License <strong>{citizen.licenseNumber}</strong> are paid. Thank you for maintaining safe road ethics.</p>
+                <p>All traffic tickets for License <strong>{licenseNumber}</strong> are paid. Thank you for maintaining safe road ethics.</p>
               </div>
             ) : (
               <div className="fines-grid animate-fade-in">
