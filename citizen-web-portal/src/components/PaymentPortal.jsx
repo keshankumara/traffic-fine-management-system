@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { payFine } from '../api/citizenApi';
 
 export default function PaymentPortal({ amount, onPaymentSuccess, onCancel }) {
   const [cardName, setCardName] = useState('');
@@ -60,7 +61,7 @@ export default function PaymentPortal({ amount, onPaymentSuccess, onCancel }) {
     }
   };
 
-  const handlePay = (e) => {
+  const handlePay = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -94,9 +95,8 @@ export default function PaymentPortal({ amount, onPaymentSuccess, onCancel }) {
       return;
     }
 
-    // Start processing simulation
     setIsProcessing(true);
-    
+
     const steps = [
       'Establishing secure connection with Bank Gateway...',
       'Verifying credit card details...',
@@ -112,29 +112,37 @@ export default function PaymentPortal({ amount, onPaymentSuccess, onCancel }) {
       currentStepIndex++;
       if (currentStepIndex < steps.length) {
         setProcessingStep(steps[currentStepIndex]);
-      } else {
-        clearInterval(interval);
-        
-        // Finalize transaction details
-        const paymentDate = new Date();
-        const formattedDate = paymentDate.getFullYear() + '-' + 
-          String(paymentDate.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(paymentDate.getDate()).padStart(2, '0') + ' ' + 
-          String(paymentDate.getHours()).padStart(2, '0') + ':' + 
-          String(paymentDate.getMinutes()).padStart(2, '0');
-        
-        const receiptNo = "REC-" + Math.floor(1000 + Math.random() * 9000) + "-" + String(paymentDate.getMinutes()).padStart(2, '0');
-        const cardEnd = cardNumber.slice(-4);
-        
-        setIsProcessing(false);
-        onPaymentSuccess({
-          paidAt: formattedDate,
-          receiptNumber: receiptNo,
-          paymentMethod: `${cardBrand} ending in **** ${cardEnd}`,
-          email: email
-        });
       }
     }, 850);
+
+    try {
+      const response = await payFine({
+        referenceNumber: 'REF-0000-00',
+        categoryId: 'CAT-A01',
+        paymentMethod: 'CARD',
+        transactionReference: `WEB-${Date.now()}`,
+      });
+      clearInterval(interval);
+      setIsProcessing(false);
+      const payload = response?.data?.data;
+      const paymentDate = new Date();
+      const formattedDate = paymentDate.getFullYear() + '-' +
+        String(paymentDate.getMonth() + 1).padStart(2, '0') + '-' +
+        String(paymentDate.getDate()).padStart(2, '0') + ' ' +
+        String(paymentDate.getHours()).padStart(2, '0') + ':' +
+        String(paymentDate.getMinutes()).padStart(2, '0');
+      const cardEnd = cardNumber.slice(-4);
+      onPaymentSuccess({
+        paidAt: formattedDate,
+        receiptNumber: payload?.transactionReference || `REC-${Date.now()}`,
+        paymentMethod: `${cardBrand} ending in **** ${cardEnd}`,
+        email,
+      });
+    } catch (err) {
+      clearInterval(interval);
+      setIsProcessing(false);
+      setError('Payment could not be completed. Please try again.');
+    }
   };
 
   return (

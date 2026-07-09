@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { getFine } from '../data/mockData';
+import { fetchFineByReference } from '../api/citizenApi';
 
 export default function FineSearch({ onFineFound }) {
   const [refNum, setRefNum] = useState('');
@@ -8,12 +8,12 @@ export default function FineSearch({ onFineFound }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     const finalCatCode = catCode === 'CUSTOM' ? customCatCode : catCode;
-    
+
     if (!refNum.trim()) {
       setError('Please enter a valid Fine Reference Number.');
       return;
@@ -25,16 +25,30 @@ export default function FineSearch({ onFineFound }) {
 
     setIsLoading(true);
 
-    // Simulate network delay for premium feel
-    setTimeout(() => {
-      const fine = getFine(refNum, finalCatCode);
-      setIsLoading(false);
+    try {
+      const response = await fetchFineByReference(refNum.trim());
+      const fine = response?.data?.data;
       if (fine) {
-        onFineFound(fine);
+        onFineFound({
+          ...fine,
+          referenceNumber: fine.referenceNumber,
+          categoryCode: fine.categoryId || finalCatCode,
+          violation: fine.description || 'Traffic Violation',
+          baseAmount: Number(fine.amount || 0),
+          status: (fine.status || 'PENDING').toLowerCase(),
+          driverName: fine.driverName,
+          licenseNumber: '',
+          vehicleNumber: fine.vehicleNumber,
+          district: fine.district,
+        });
       } else {
         setError('Fine ticket not found. Please verify the Reference Number and Category Code.');
       }
-    }, 900);
+    } catch (err) {
+      setError('Unable to retrieve the fine at the moment. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const loadSample = (ref, cat) => {

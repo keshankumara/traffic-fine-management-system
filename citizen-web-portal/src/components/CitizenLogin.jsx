@@ -1,59 +1,73 @@
 import { useState } from 'react';
-import { authenticateCitizen, registerCitizen } from '../data/mockData';
+import { loginCitizen, registerCitizenAccount } from '../api/citizenApi';
+import { setAuthToken } from '../api/client';
 
 export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = null, isCheckout = false }) {
   const [activeTab, setActiveTab] = useState(isCheckout ? 'signup' : 'login');
   
-  // Shared states
-  const [licenseNumber, setLicenseNumber] = useState(activeFine ? activeFine.licenseNumber : '');
+  // Login states
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  
+  // Signup states
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [district, setDistrict] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Shared states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Signup-only states
-  const [fullName, setFullName] = useState(activeFine ? activeFine.driverName : '');
-  const [email, setEmail] = useState('');
-  const [vehicleNumber, setVehicleNumber] = useState(activeFine ? activeFine.vehicleNumber : '');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const handleLoginSubmit = (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!licenseNumber.trim()) {
-      setError('Please enter your Driver License Number.');
+    if (!loginEmail.trim() || !/\S+@\S+\.\S+/.test(loginEmail)) {
+      setError('Please enter a valid email address.');
       return;
     }
-    if (!password) {
+    if (!loginPassword) {
       setError('Please enter your password.');
       return;
     }
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const citizen = authenticateCitizen(licenseNumber, password);
-      setIsLoading(false);
-      if (citizen) {
-        onLoginSuccess(citizen);
+    try {
+      const response = await loginCitizen(loginEmail.trim(), loginPassword);
+      const payload = response?.data?.data;
+      if (payload?.token) {
+        setAuthToken(payload.token);
+        onLoginSuccess({
+          id: payload.id,
+          fullName: payload.name || loginEmail.trim(),
+          email: payload.email,
+          licenseNumber: '',
+          vehicleNumber: '',
+          token: payload.token,
+        });
       } else {
-        setError('Invalid License Number or Password. Please try again.');
+        setError('Invalid email or password. Please try again.');
       }
-    }, 850);
+    } catch (err) {
+      setError('Unable to sign in. Please verify your credentials and try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSignupSubmit = (e) => {
+  const handleSignupSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
     if (!fullName.trim()) {
-      setError('Please enter your Full Name.');
-      return;
-    }
-    if (!licenseNumber.trim()) {
-      setError('Please enter your Driver License Number.');
+      setError('Please enter your full name.');
       return;
     }
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
@@ -75,38 +89,62 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
 
     setIsLoading(true);
 
-    const newCitizen = {
-      licenseNumber: licenseNumber.trim().toUpperCase(),
-      password,
-      fullName: fullName.trim(),
-      email: email.trim(),
-      vehicleNumber: vehicleNumber.trim().toUpperCase()
-    };
-
-    setTimeout(() => {
-      const result = registerCitizen(newCitizen);
-      setIsLoading(false);
-      if (result.success) {
-        onLoginSuccess(result.citizen);
+    try {
+      const payload = {
+        name: fullName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        role: 'DRIVER',
+        phoneNumber: phoneNumber.trim() || null,
+        district: district.trim() || null,
+      };
+      const response = await registerCitizenAccount(payload);
+      const authPayload = response?.data?.data;
+      if (authPayload?.token) {
+        setAuthToken(authPayload.token);
+        onLoginSuccess({
+          id: authPayload.id,
+          fullName: authPayload.name || fullName.trim(),
+          email: authPayload.email,
+          licenseNumber: '',
+          vehicleNumber: '',
+          token: authPayload.token,
+        });
       } else {
-        setError(result.message);
+        setError('Unable to create your account. Please try again.');
       }
-    }, 950);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to create your account right now. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleDemoLogin = (license, pass) => {
-    setLicenseNumber(license);
-    setPassword(pass);
+  const handleDemoLogin = async (demoEmail, pass) => {
+    setLoginEmail(demoEmail);
+    setLoginPassword(pass);
     setError('');
-    
+
     setIsLoading(true);
-    setTimeout(() => {
-      const citizen = authenticateCitizen(license, pass);
-      setIsLoading(false);
-      if (citizen) {
-        onLoginSuccess(citizen);
+    try {
+      const response = await loginCitizen(demoEmail, pass);
+      const payload = response?.data?.data;
+      if (payload?.token) {
+        setAuthToken(payload.token);
+        onLoginSuccess({
+          id: payload.id,
+          fullName: payload.name || demoEmail,
+          email: payload.email,
+          licenseNumber: '',
+          vehicleNumber: '',
+          token: payload.token,
+        });
       }
-    }, 500);
+    } catch (err) {
+      setError('Demo login is not available right now.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const cardTitle = isCheckout ? "Step 3: Account Verification" : "Citizen Portal Login";
@@ -177,17 +215,15 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
       {activeTab === 'login' ? (
         <form onSubmit={handleLoginSubmit}>
           <div className="form-group" style={{ marginBottom: '20px' }}>
-            <label htmlFor="loginLicenseNumber">Driver License Number</label>
+            <label htmlFor="loginEmail">Email Address</label>
             <input
-              id="loginLicenseNumber"
-              type="text"
-              placeholder="e.g. B1234567"
-              value={licenseNumber}
-              onChange={(e) => setLicenseNumber(e.target.value)}
+              id="loginEmail"
+              type="email"
+              placeholder="e.g. name@domain.com"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
               required
-              style={{ textTransform: 'uppercase' }}
             />
-            <span className="helper-text">Include prefix letter (e.g. B)</span>
           </div>
 
           <div className="form-group" style={{ marginBottom: '20px', position: 'relative' }}>
@@ -195,16 +231,16 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <input
                 id="loginPassword"
-                type={showPassword ? 'text' : 'password'}
+                type={showLoginPassword ? 'text' : 'password'}
                 placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
                 required
                 style={{ width: '100%', paddingRight: '48px' }}
               />
               <button
                 type="button"
-                onClick={() => setShowPassword(!showPassword)}
+                onClick={() => setShowLoginPassword(!showLoginPassword)}
                 style={{
                   position: 'absolute',
                   right: '12px',
@@ -217,9 +253,9 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
                   justifyContent: 'center',
                   padding: '4px'
                 }}
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
               >
-                {showPassword ? (
+                {showLoginPassword ? (
                   <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                   </svg>
@@ -260,7 +296,7 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
       ) : (
         <form onSubmit={handleSignupSubmit}>
           <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label htmlFor="signupFullName">Full Name</label>
+            <label htmlFor="signupFullName">Full Name *</label>
             <input
               id="signupFullName"
               type="text"
@@ -271,35 +307,8 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div className="form-group">
-              <label htmlFor="signupLicenseNumber">Driver License Number</label>
-              <input
-                id="signupLicenseNumber"
-                type="text"
-                placeholder="e.g. B1234567"
-                value={licenseNumber}
-                onChange={(e) => setLicenseNumber(e.target.value)}
-                required
-                style={{ textTransform: 'uppercase' }}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="signupVehicleNumber">Primary Vehicle Number</label>
-              <input
-                id="signupVehicleNumber"
-                type="text"
-                placeholder="e.g. WP CAB-4567"
-                value={vehicleNumber}
-                onChange={(e) => setVehicleNumber(e.target.value)}
-                required
-                style={{ textTransform: 'uppercase' }}
-              />
-            </div>
-          </div>
-
           <div className="form-group" style={{ marginBottom: '16px' }}>
-            <label htmlFor="signupEmail">Email Address</label>
+            <label htmlFor="signupEmail">Email Address *</label>
             <input
               id="signupEmail"
               type="email"
@@ -312,7 +321,7 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div className="form-group" style={{ position: 'relative' }}>
-              <label htmlFor="signupPassword">Password</label>
+              <label htmlFor="signupPassword">Password *</label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
                   id="signupPassword"
@@ -353,7 +362,7 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
             </div>
 
             <div className="form-group" style={{ position: 'relative' }}>
-              <label htmlFor="signupConfirmPassword">Confirm Password</label>
+              <label htmlFor="signupConfirmPassword">Confirm Password *</label>
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <input
                   id="signupConfirmPassword"
@@ -394,6 +403,29 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
             </div>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div className="form-group">
+              <label htmlFor="signupPhoneNumber">Phone Number (Optional)</label>
+              <input
+                id="signupPhoneNumber"
+                type="tel"
+                placeholder="e.g. +94712345678"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+            </div>
+            <div className="form-group">
+              <label htmlFor="signupDistrict">District (Optional)</label>
+              <input
+                id="signupDistrict"
+                type="text"
+                placeholder="e.g. Colombo"
+                value={district}
+                onChange={(e) => setDistrict(e.target.value)}
+              />
+            </div>
+          </div>
+
           {error && (
             <div className="alert-error animate-slide-in" style={{ marginTop: '0', marginBottom: '20px' }}>
               <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
@@ -431,19 +463,19 @@ export default function CitizenLogin({ onLoginSuccess, onCancel, activeFine = nu
               type="button"
               className="btn-secondary"
               style={{ padding: '8px', fontSize: '12px', borderRadius: '8px', textAlign: 'left' }}
-              onClick={() => handleDemoLogin('B1234567', 'password123')}
+              onClick={() => handleDemoLogin('driver1@example.com', 'password123')}
             >
               <strong>Hirushi Perera</strong>
-              <span style={{ fontSize: '10px', display: 'block', color: 'var(--text-muted)' }}>License: B1234567</span>
+              <span style={{ fontSize: '10px', display: 'block', color: 'var(--text-muted)' }}>Email: driver1@example.com</span>
             </button>
             <button
               type="button"
               className="btn-secondary"
               style={{ padding: '8px', fontSize: '12px', borderRadius: '8px', textAlign: 'left' }}
-              onClick={() => handleDemoLogin('B9876543', 'password123')}
+              onClick={() => handleDemoLogin('driver2@example.com', 'password123')}
             >
               <strong>Aruni Fernando</strong>
-              <span style={{ fontSize: '10px', display: 'block', color: 'var(--text-muted)' }}>License: B9876543</span>
+              <span style={{ fontSize: '10px', display: 'block', color: 'var(--text-muted)' }}>Email: driver2@example.com</span>
             </button>
           </div>
         </div>

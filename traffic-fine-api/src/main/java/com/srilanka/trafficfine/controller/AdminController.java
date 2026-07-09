@@ -2,7 +2,11 @@ package com.srilanka.trafficfine.controller;
 
 import com.srilanka.trafficfine.dto.response.AnalyticsResponse;
 import com.srilanka.trafficfine.dto.response.ApiResponse;
+import com.srilanka.trafficfine.dto.response.NotificationLogResponse;
 import com.srilanka.trafficfine.dto.response.PaymentResponse;
+import com.srilanka.trafficfine.dto.response.UserResponse;
+import com.srilanka.trafficfine.entity.NotificationLog;
+import com.srilanka.trafficfine.entity.User;
 import com.srilanka.trafficfine.service.AnalyticsService;
 import com.srilanka.trafficfine.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -90,17 +94,17 @@ public class AdminController {
 
     @GetMapping("/users")
     @Operation(summary = "List all users (admin)")
-    public ResponseEntity<ApiResponse<java.util.List<com.srilanka.trafficfine.dto.response.UserResponse>>> allUsers() {
-        java.util.List<com.srilanka.trafficfine.entity.User> users = analyticsService.getAllUsers();
-        java.util.List<com.srilanka.trafficfine.dto.response.UserResponse> resp = users.stream().map(com.srilanka.trafficfine.dto.response.UserResponse::from).toList();
-        return ResponseEntity.ok(ApiResponse.success("All users", resp));
+    public ResponseEntity<ApiResponse<List<UserResponse>>> allUsers() {
+        List<User> users = analyticsService.getAllUsers();
+        List<UserResponse> response = users.stream().map(UserResponse::from).toList();
+        return ResponseEntity.ok(ApiResponse.success("All users", response));
     }
 
     @GetMapping("/notifications")
     @Operation(summary = "List notification logs")
-    public ResponseEntity<ApiResponse<java.util.List<com.srilanka.trafficfine.dto.response.NotificationLogResponse>>> notificationLogs() {
-        java.util.List<com.srilanka.trafficfine.entity.NotificationLog> logs = analyticsService.getAllNotificationLogs();
-        java.util.List<com.srilanka.trafficfine.dto.response.NotificationLogResponse> resp = logs.stream().map(com.srilanka.trafficfine.dto.response.NotificationLogResponse::from).toList();
-        return ResponseEntity.ok(ApiResponse.success("Notification logs", resp));
+    public ResponseEntity<ApiResponse<List<NotificationLogResponse>>> notificationLogs() {
+        List<NotificationLog> logs = analyticsService.getAllNotificationLogs();
+        List<NotificationLogResponse> response = logs.stream().map(NotificationLogResponse::from).toList();
+        return ResponseEntity.ok(ApiResponse.success("Notification logs", response));
     }
 }
