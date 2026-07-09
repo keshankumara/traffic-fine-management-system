@@ -1,8 +1,31 @@
-import { Paper, Table, TableBody, TableCell, TableHead, TableRow, Chip } from '@mui/material';
-import { usersData } from '../../data/mockData';
-import { statusMeta } from '../../config/theme';
+import { Paper, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { useEffect, useState } from 'react';
+import apiClient from '../../api/client';
+
+type UserRow = {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  phoneNumber?: string;
+  district?: string;
+};
 
 export default function UsersTable() {
+  const [rows, setRows] = useState<UserRow[]>([]);
+
+  useEffect(() => {
+    async function loadUsers() {
+      try {
+        const res = await apiClient.get('/admin/users');
+        setRows(res.data?.data ?? []);
+      } catch (err) {
+        console.error('Failed to load users', err);
+      }
+    }
+    loadUsers();
+  }, []);
+
   return (
     <Paper sx={{ boxShadow: 'soft' }}>
       <Table size="small">
@@ -11,20 +34,18 @@ export default function UsersTable() {
             <TableCell>Name</TableCell>
             <TableCell>Email</TableCell>
             <TableCell>Role</TableCell>
-            <TableCell>Department</TableCell>
-            <TableCell>Status</TableCell>
+            <TableCell>Phone</TableCell>
+            <TableCell>District</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {usersData.map((row) => (
-            <TableRow key={row.email}>
+          {rows.map((row) => (
+            <TableRow key={row.id}>
               <TableCell>{row.name}</TableCell>
               <TableCell>{row.email}</TableCell>
               <TableCell>{row.role}</TableCell>
-              <TableCell>{row.department}</TableCell>
-              <TableCell>
-                <Chip size="small" label={statusMeta[row.status].label} color={statusMeta[row.status].color} variant="outlined" />
-              </TableCell>
+              <TableCell>{row.phoneNumber ?? '-'}</TableCell>
+              <TableCell>{row.district ?? '-'}</TableCell>
             </TableRow>
           ))}
         </TableBody>

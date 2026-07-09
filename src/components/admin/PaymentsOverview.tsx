@@ -1,8 +1,33 @@
 import { Card, CardContent, Grid, Stack, Typography } from '@mui/material';
-import { paymentData } from '../../data/mockData';
+import { useEffect, useState } from 'react';
+import { fetchAllPayments } from '../../api/adminApi';
 import TableCard from '../shared/TableCard';
 
 export default function PaymentsOverview() {
+  const [paymentData, setPaymentData] = useState<Array<Record<string, any>>>([]);
+
+  useEffect(() => {
+    async function loadPayments() {
+      try {
+        const response = await fetchAllPayments();
+        // API returns ApiResponse<List<PaymentResponse>> where data is array
+        const payments = response.data?.data ?? [];
+        setPaymentData(payments.map((p: any) => ({
+          id: p.id,
+          reference: p.fineReferenceNumber,
+          amount: p.amount,
+          method: p.paymentMethod,
+          status: p.transactionStatus,
+          paidAt: p.paidAt
+        })));
+      } catch (error) {
+        console.error('Unable to load payment records', error);
+      }
+    }
+
+    loadPayments();
+  }, []);
+
   return (
     <Stack spacing={3}>
       <Grid container spacing={2}>

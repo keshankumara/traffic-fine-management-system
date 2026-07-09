@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { loginAdmin } from '../api/authApi';
+import { setAuthToken } from '../api/client';
 
 interface User {
   username: string;
   role: 'Super Admin';
+  token: string;
 }
 
 interface AuthContextType {
@@ -21,27 +24,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) as User : null;
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored) as User;
+    setAuthToken(parsed.token);
+    return parsed;
   });
 
   useEffect(() => {
     if (user) {
+      setAuthToken(user.token);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
     } else {
+      setAuthToken(undefined);
       localStorage.removeItem(STORAGE_KEY);
     }
   }, [user]);
 
   const login = async (username: string, password: string) => {
-    const normalized = username.trim().toLowerCase();
-    const isValid = normalized === 'admin' && password === 'Admin@123';
+    try {
+      const response = await loginAdmin(username, password);
+      const payload = response.data?.data;
+      if (!payload?.token) {
+        return false;
+      }
 
-    if (isValid) {
-      setUser({ username: 'admin', role: 'Super Admin' });
+      const account: User = {
+        username: payload.email,
+        role: 'Super Admin',
+        token: payload.token,
+      };
+      setUser(account);
       return true;
+    } catch {
+      return false;
     }
-
-    return false;
   };
 
   const logout = () => setUser(null);

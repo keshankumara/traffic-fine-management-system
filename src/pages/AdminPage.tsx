@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Box, Button, Container, Divider, Grid, Paper, Stack, Typography } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
@@ -9,7 +9,8 @@ import VerifiedIcon from '@mui/icons-material/Verified';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import { finesData, officersData } from '../data/mockData';
+import { fetchAllFines } from '../api/adminApi';
+import apiClient from '../api/client';
 import TableCard from '../components/shared/TableCard';
 import DashboardContent from '../components/admin/DashboardContent';
 import PaymentsOverview from '../components/admin/PaymentsOverview';
@@ -22,7 +23,38 @@ import SettingsPanel from '../components/admin/SettingsPanel';
 
 export default function AdminPage() {
   const [section, setSection] = useState<'dashboard' | 'fines' | 'payments' | 'districts' | 'categories' | 'officers' | 'reports' | 'notifications' | 'users' | 'settings'>('dashboard');
+  const [finesData, setFinesData] = useState<Array<Record<string, any>>>([]);
+  const [officersData, setOfficersData] = useState<Array<Record<string, any>>>([]);
   const currentDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  useEffect(() => {
+    async function loadFines() {
+      try {
+        const response = await fetchAllFines();
+        setFinesData(response.data?.data ?? []);
+      } catch (error) {
+        console.error('Unable to load fine records', error);
+      }
+    }
+
+    async function loadOfficers() {
+      try {
+        const res = await apiClient.get('/admin/users');
+        const officers = (res.data?.data ?? []).filter((u: any) => u.role === 'OFFICER');
+        setOfficersData(officers.map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          district: u.district,
+        })));
+      } catch (err) {
+        console.error('Failed to load officers', err);
+      }
+    }
+
+    loadFines();
+    loadOfficers();
+  }, []);
 
   const adminLinks = [
     ['dashboard', 'Dashboard', <DashboardIcon fontSize="small" />],
@@ -76,19 +108,19 @@ export default function AdminPage() {
               ))}
             </Stack>
             <Divider sx={{ my: 2 }} />
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1.5, alignItems: 'center' }}>
               <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: 'primary.main', color: '#fff', display: 'grid', placeItems: 'center', fontWeight: 800 }}>
                 SP
               </Box>
               <Box>
-                <Typography variant="body2" fontWeight={800}>
+                <Typography variant="body2" sx={{ fontWeight: 800 }}>
                   Supt. Premasiri
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Super Admin
                 </Typography>
               </Box>
-            </Stack>
+            </Box>
           </Paper>
         </Grid>
         <Grid size={{ xs: 12, md: 9 }}>
@@ -100,7 +132,7 @@ export default function AdminPage() {
                 </Typography>
                 <Typography color="text.secondary">Operational oversight, analytics, and collections management.</Typography>
               </Box>
-              <Stack direction="row" spacing={1} alignItems="center">
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                 <Typography color="text.secondary">{currentDate}</Typography>
                 <Button variant="outlined" startIcon={<PublicIcon />}>
                   Public Portal

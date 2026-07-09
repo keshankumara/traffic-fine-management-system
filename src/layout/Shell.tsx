@@ -58,19 +58,22 @@ export default function Shell({ defaultTab = 'home' }: { defaultTab?: string }) 
           </Box>
 
           <Box sx={{ display: { xs: 'none', md: 'flex' }, gap: 0.75, alignItems: 'center', flexWrap: 'wrap' }}>
-            {navItems.map((item) => (
-              <Button
-                key={item.path}
-                component={Link}
-                to={item.path}
-                variant={activeTab === item.label.toLowerCase() ? 'contained' : 'text'}
-                color={activeTab === item.label.toLowerCase() ? 'secondary' : 'inherit'}
-                sx={{ color: 'rgba(255,255,255,0.88)', '&.MuiButton-contained': { color: 'primary.dark' } }}
-                startIcon={item.icon}
-              >
-                {item.label}
-              </Button>
-            ))}
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Button
+                  key={item.path}
+                  component={Link}
+                  to={item.path}
+                  variant={activeTab === item.label.toLowerCase() ? 'contained' : 'text'}
+                  color={activeTab === item.label.toLowerCase() ? 'secondary' : 'inherit'}
+                  sx={{ color: 'rgba(255,255,255,0.88)', '&.MuiButton-contained': { color: 'primary.dark' } }}
+                  startIcon={<Icon fontSize="small" />}
+                >
+                  {item.label}
+                </Button>
+              );
+            })}
           </Box>
 
           {auth.user ? (

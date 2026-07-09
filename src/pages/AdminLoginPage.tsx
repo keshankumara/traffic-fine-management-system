@@ -16,7 +16,7 @@ export default function AdminLoginPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
@@ -26,13 +26,14 @@ export default function AdminLoginPage() {
     event.preventDefault();
     setError('');
 
-    const ok = await auth.login(username, password);
+    const loginEmail = email.includes('@') ? email : `${email}@example.com`;
+    const ok = await auth.login(loginEmail, password);
     if (ok) {
       navigate(from, { replace: true });
       return;
     }
 
-    setError('Invalid username or password. Use admin/Admin@123.');
+    setError('Invalid email or password.');
   };
 
   return (
@@ -56,11 +57,11 @@ export default function AdminLoginPage() {
             <Box component="form" onSubmit={handleSubmit} className="space-y-4">
               <TextField
                 fullWidth
-                label="Username"
-                value={username}
-                onChange={(event) => setUsername(event.target.value)}
-                placeholder="admin"
-                autoComplete="username"
+                label="Email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="admin@example.com"
+                autoComplete="email"
               />
               <TextField
                 fullWidth

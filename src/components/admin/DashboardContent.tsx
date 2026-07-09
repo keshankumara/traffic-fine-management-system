@@ -1,7 +1,7 @@
-import { Card, CardContent, Grid, Stack, TextField, Typography } from '@mui/material';
-import { useMemo, useState } from 'react';
+import { Box, Card, CardContent, Grid, Stack, TextField, Typography } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
 import { Area, Cell, ComposedChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { monthlyCollections, violationDistribution, paymentData } from '../../data/mockData';
+import { fetchDashboardSummary } from '../../api/adminApi';
 import ChartCard from '../shared/ChartCard';
 import TableCard from '../shared/TableCard';
 
@@ -22,6 +22,41 @@ const monthOrder: Record<string, number> = {
 
 export default function DashboardContent() {
   const [dateRange, setDateRange] = useState({ start: '2024-01', end: '2024-12' });
+  const [monthlyCollections, setMonthlyCollections] = useState<Array<{ month: string; current: number; previous: number }>>([]);
+  const [violationDistribution, setViolationDistribution] = useState<Array<{ name: string; value: number }>>([]);
+  const [paymentData, setPaymentData] = useState<Array<Record<string, any>>>([]);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const response = await fetchDashboardSummary();
+        const dashboard = response.data?.data;
+
+        if (dashboard) {
+          setMonthlyCollections(Object.entries(dashboard.revenueSummary || {}).map(([month, value]) => ({
+            month,
+            current: Number(value ?? 0),
+            previous: 0
+          })));
+
+          setViolationDistribution(Object.entries(dashboard.collectionsByCategory || {}).map(([name, value]) => ({
+            name,
+            value: Number(value ?? 0)
+          })));
+
+          setPaymentData([
+            { label: 'Total Revenue', value: dashboard.grandTotal?.toString() ?? '0' },
+            { label: 'Paid Fines', value: dashboard.totalPaidFines ?? 0 },
+            { label: 'Pending Fines', value: dashboard.totalPendingFines ?? 0 }
+          ]);
+        }
+      } catch (error) {
+        console.error('Unable to load dashboard summary', error);
+      }
+    }
+
+    loadDashboard();
+  }, []);
 
   const filteredMonthlyCollections = useMemo(() => {
     const startMonth = Number(dateRange.start.split('-')[1]);
@@ -33,11 +68,11 @@ export default function DashboardContent() {
       const monthNumber = monthOrder[item.month];
       return monthNumber >= from && monthNumber <= to;
     });
-  }, [dateRange]);
+  }, [dateRange, monthlyCollections]);
 
   return (
     <Stack spacing={3}>
-      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: 'center' }}>
         <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'text.secondary' }}>
           Analytics date range:
         </Typography>
@@ -55,7 +90,7 @@ export default function DashboardContent() {
           onChange={(event) => setDateRange((prev) => ({ ...prev, end: event.target.value }))}
           size="small"
         />
-      </Stack>
+      </Box>
       <Grid container spacing={2}>
         {[
           ['Total Revenue Collected', 'LKR 142.6M', '↑ 12.4% vs last month'],
